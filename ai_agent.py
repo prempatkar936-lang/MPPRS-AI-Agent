@@ -7,7 +7,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 class AIAgent:
-    """AI Agent for processing and responding to messages"""
+    """AI Agent for processing and responding to messages - Professional + Friendly + Lovely Style"""
     
     def __init__(self):
         openai.api_key = Config.OPENAI_API_KEY
@@ -35,18 +35,35 @@ class AIAgent:
             logger.error(f"Error getting conversation context: {str(e)}")
             return ""
     
-    def generate_reply(self, user_message, user_id, platform):
-        """Generate AI reply using OpenAI"""
+    def generate_reply(self, user_message, user_id, platform, sender_name="Friend"):
+        """Generate AI reply using OpenAI - Professional + Friendly + Lovely"""
         try:
             # Get conversation context
             context = self.get_conversation_context(user_id, platform)
             
-            # Prepare system message for casual personal chat
-            system_message = """You are a friendly, casual AI assistant. 
-Respond naturally and conversationally as if chatting with a friend.
-Keep responses concise (under 500 characters) and friendly.
-Use emojis occasionally to make the conversation more engaging.
-Be helpful, honest, and maintain a warm tone."""
+            # Prem Patkar's personal style - Professional + Friendly + Lovely
+            system_message = f"""You are Prem Patkar's personal AI assistant. You respond on behalf of Prem to messages on {platform}.
+
+Your personality:
+- Professional yet warm and approachable
+- Friendly and engaging in conversations
+- Lovely and caring - show genuine interest in people
+- Casual and natural language (use Hindi-English mix when appropriate)
+- Use emojis occasionally but not overdone
+- Keep responses concise but meaningful (under 500 characters)
+- Be helpful and honest
+- Remember context from previous messages
+- Make people feel valued and heard
+
+When responding:
+- Acknowledge what the person said
+- Respond genuinely and authentically
+- Use the person's name if you know it ({sender_name})
+- Add warmth and personality
+- Never sound robotic or generic
+- Be yourself (Prem's personality)
+
+Format: Keep it natural, conversational, and warm."""
             
             # Build conversation for OpenAI
             messages = [
@@ -54,7 +71,7 @@ Be helpful, honest, and maintain a warm tone."""
             ]
             
             if context:
-                messages.append({"role": "user", "content": f"Previous context:\n{context}"})
+                messages.append({"role": "user", "content": f"Previous conversation context:\n{context}"})
             
             messages.append({"role": "user", "content": user_message})
             
@@ -71,12 +88,18 @@ Be helpful, honest, and maintain a warm tone."""
             # Store message in database
             self.store_message(user_id, platform, user_message, reply)
             
-            logger.info(f"Generated reply for user {user_id} on {platform}")
+            logger.info(f"✅ Generated reply for user {user_id} on {platform}")
             return reply
         
+        except openai.error.RateLimitError:
+            logger.error("⚠️ OpenAI rate limit exceeded")
+            return "Thanks for reaching out! I'm a bit busy right now, but I'll get back to you soon! 😊"
+        except openai.error.AuthenticationError:
+            logger.error("❌ OpenAI authentication failed")
+            return "Sorry, I'm having trouble responding right now. Please try again in a moment! 🙏"
         except Exception as e:
-            logger.error(f"Error generating reply: {str(e)}")
-            return "Maaf kijiye, mujhe aapka sawal samajh nahi aaya. Kripaya dobara poochiyen."
+            logger.error(f"❌ Error generating reply: {str(e)}")
+            return "Thanks for your message! I'll respond as soon as I can! 😊"
     
     def store_message(self, user_id, platform, message_text, reply_text):
         """Store message in database"""
@@ -96,6 +119,7 @@ Be helpful, honest, and maintain a warm tone."""
                 )
                 self.db.add(user)
                 self.db.commit()
+                logger.info(f"✅ Created new user: {user_id}")
             
             # Store message
             msg = Message(
@@ -109,7 +133,7 @@ Be helpful, honest, and maintain a warm tone."""
             )
             self.db.add(msg)
             
-            # Update conversation
+            # Update or create conversation
             conv = self.db.query(Conversation).filter(
                 Conversation.user_id == user_id,
                 Conversation.platform == platform,
@@ -129,10 +153,10 @@ Be helpful, honest, and maintain a warm tone."""
             conv.updated_at = datetime.utcnow()
             
             self.db.commit()
-            logger.info(f"Message stored for user {user_id}")
+            logger.info(f"✅ Message stored for user {user_id}")
         
         except Exception as e:
-            logger.error(f"Error storing message: {str(e)}")
+            logger.error(f"❌ Error storing message: {str(e)}")
             self.db.rollback()
     
     def get_user_history(self, user_id, platform, limit=10):
@@ -146,7 +170,7 @@ Be helpful, honest, and maintain a warm tone."""
             return [{"user": msg.message_text, "ai": msg.reply_text, "timestamp": msg.timestamp.isoformat()} 
                     for msg in reversed(messages)]
         except Exception as e:
-            logger.error(f"Error fetching user history: {str(e)}")
+            logger.error(f"❌ Error fetching user history: {str(e)}")
             return []
     
     def close(self):
