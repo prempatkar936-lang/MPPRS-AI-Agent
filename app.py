@@ -3,7 +3,7 @@ from flask_cors import CORS
 from config import config
 from database import init_db
 from ai_agent import AIAgent
-from message_handlers import WhatsAppHandler, InstagramHandler, MessengerHandler
+from message_handlers import InstagramHandler, FacebookPersonalMessagesHandler
 import logging
 import os
 from datetime import datetime
@@ -23,81 +23,76 @@ CORS(app)
 # Initialize database
 try:
     init_db()
-    logger.info("Database initialized successfully")
+    logger.info("✅ Database initialized successfully")
 except Exception as e:
-    logger.error(f"Failed to initialize database: {str(e)}")
+    logger.error(f"❌ Failed to initialize database: {str(e)}")
 
 # Initialize handlers
-ai_agent = AIAgent()
-whatsapp_handler = WhatsAppHandler(ai_agent)
-instagram_handler = InstagramHandler(ai_agent)
-messenger_handler = MessengerHandler(ai_agent)
+try:
+    ai_agent = AIAgent()
+    instagram_handler = InstagramHandler(ai_agent)
+    facebook_handler = FacebookPersonalMessagesHandler(ai_agent)
+    logger.info("✅ All handlers initialized successfully")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize handlers: {str(e)}")
 
 @app.route('/', methods=['GET'])
 def health_check():
     """Health check endpoint"""
     return jsonify({
-        'status': 'healthy',
-        'service': 'MPPRS AI Agent',
+        'status': '✅ healthy',
+        'service': 'MPPRS AI Agent - Prem Patkar',
+        'platforms': ['Instagram DMs', 'Facebook Personal Messages'],
+        'style': 'Professional + Friendly + Lovely',
         'timestamp': datetime.utcnow().isoformat(),
-        'version': '1.0.0'
+        'version': '2.0.0'
     }), 200
 
-# WhatsApp Routes
-@app.route('/webhook/whatsapp', methods=['GET'])
-def whatsapp_verify():
-    """Verify WhatsApp webhook"""
-    return whatsapp_handler.verify_webhook(request)
-
-@app.route('/webhook/whatsapp', methods=['POST'])
-def whatsapp_webhook():
-    """Handle WhatsApp messages"""
-    try:
-        data = request.get_json()
-        logger.info(f"Received WhatsApp message: {data}")
-        response = whatsapp_handler.handle_message(data)
-        return jsonify(response), 200
-    except Exception as e:
-        logger.error(f"Error handling WhatsApp message: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-# Instagram Routes
+# ============================================================
+# INSTAGRAM ROUTES
+# ============================================================
 @app.route('/webhook/instagram', methods=['GET'])
 def instagram_verify():
     """Verify Instagram webhook"""
+    logger.info("📱 Instagram webhook verification requested")
     return instagram_handler.verify_webhook(request)
 
 @app.route('/webhook/instagram', methods=['POST'])
 def instagram_webhook():
-    """Handle Instagram messages"""
+    """Handle Instagram Direct Messages"""
     try:
         data = request.get_json()
-        logger.info(f"Received Instagram message: {data}")
+        logger.info(f"📩 Received Instagram message: {data}")
         response = instagram_handler.handle_message(data)
         return jsonify(response), 200
     except Exception as e:
-        logger.error(f"Error handling Instagram message: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"❌ Error handling Instagram message: {str(e)}", exc_info=True)
+        return jsonify({'status': 'success', 'message': 'Processed'}), 200
 
-# Facebook Messenger Routes
-@app.route('/webhook/messenger', methods=['GET'])
-def messenger_verify():
-    """Verify Messenger webhook"""
-    return messenger_handler.verify_webhook(request)
+# ============================================================
+# FACEBOOK PERSONAL MESSAGES ROUTES
+# ============================================================
+@app.route('/webhook/facebook', methods=['GET'])
+def facebook_verify():
+    """Verify Facebook webhook"""
+    logger.info("📱 Facebook webhook verification requested")
+    return facebook_handler.verify_webhook(request)
 
-@app.route('/webhook/messenger', methods=['POST'])
-def messenger_webhook():
-    """Handle Messenger messages"""
+@app.route('/webhook/facebook', methods=['POST'])
+def facebook_webhook():
+    """Handle Facebook Personal Messages (Mobile App)"""
     try:
         data = request.get_json()
-        logger.info(f"Received Messenger message: {data}")
-        response = messenger_handler.handle_message(data)
+        logger.info(f"📩 Received Facebook message: {data}")
+        response = facebook_handler.handle_message(data)
         return jsonify(response), 200
     except Exception as e:
-        logger.error(f"Error handling Messenger message: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"❌ Error handling Facebook message: {str(e)}", exc_info=True)
+        return jsonify({'status': 'success', 'message': 'Processed'}), 200
 
-# API Routes for chat history
+# ============================================================
+# API ROUTES FOR CHAT HISTORY
+# ============================================================
 @app.route('/api/chat-history/<user_id>/<platform>', methods=['GET'])
 def get_chat_history(user_id, platform):
     """Get chat history for a user"""
@@ -108,22 +103,72 @@ def get_chat_history(user_id, platform):
             'status': 'success',
             'user_id': user_id,
             'platform': platform,
+            'message_count': len(history),
             'messages': history
         }), 200
     except Exception as e:
-        logger.error(f"Error fetching chat history: {str(e)}")
+        logger.error(f"❌ Error fetching chat history: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-# Error handlers
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    """Get API status"""
+    return jsonify({
+        'status': '✅ Online',
+        'service': 'MPPRS AI Agent',
+        'owner': 'Prem Patkar',
+        'platforms': ['Instagram', 'Facebook'],
+        'ai_style': 'Professional + Friendly + Lovely',
+        'timestamp': datetime.utcnow().isoformat()
+    }), 200
+
+# ============================================================
+# ERROR HANDLERS
+# ============================================================
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
+    logger.warning(f"⚠️ 404 - Endpoint not found")
+    return jsonify({'error': 'Endpoint not found', 'status': 404}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    logger.error(f"Internal server error: {str(error)}")
-    return jsonify({'error': 'Internal server error'}), 500
+    logger.error(f"❌ 500 - Internal server error: {str(error)}")
+    return jsonify({'error': 'Internal server error', 'status': 500}), 500
+
+@app.before_request
+def log_request():
+    """Log incoming requests"""
+    logger.info(f"📨 {request.method} {request.path}")
+
+@app.after_request
+def log_response(response):
+    """Log outgoing responses"""
+    logger.info(f"📤 Response status: {response.status_code}")
+    return response
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 8080))
-    app.run(host='0.0.0.0', port=port, debug=app.config['DEBUG'])
+    debug_mode = app.config.get('DEBUG', False)
+    
+    logger.info(f"""
+    ╔════════════════════════════════════════════════════════════╗
+    ║        🚀 MPPRS AI AGENT - STARTING UP 🚀                  ║
+    ║                                                              ║
+    ║  Owner: Prem Patkar                                         ║
+    ║  Platforms: Instagram DMs, Facebook Personal Messages       ║
+    ║  Style: Professional + Friendly + Lovely                    ║
+    ║  Port: {port}                                                 ║
+    ║  Debug: {debug_mode}                                            ║
+    ║  Version: 2.0.0                                             ║
+    ║                                                              ║
+    ║  Webhooks:                                                   ║
+    ║  - Instagram: /webhook/instagram                            ║
+    ║  - Facebook: /webhook/facebook                              ║
+    ║                                                              ║
+    ║  Health Check: GET /                                        ║
+    ║  Status: GET /api/status                                    ║
+    ║                                                              ║
+    ╚════════════════════════════════════════════════════════════╝
+    """)
+    
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
