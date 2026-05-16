@@ -1,0 +1,7 @@
+gcp_project_id = "your-project-id"
+gcp_region     = "us-central1"
+openai_api_key = "sk-xxxxxxxxxxxx"
+whatsapp_api_token = "your-whatsapp-token"
+instagram_access_token = "your-instagram-token"
+facebook_page_access_token = "your-facebook-token"
+database_password = "your-secure-password"

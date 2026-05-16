@@ -1,0 +1,43 @@
+steps:
+  # Step 1: Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/mpprs-ai-agent:latest'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/mpprs-ai-agent:${SHORT_SHA}'
+      - '.'
+
+  # Step 2: Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/mpprs-ai-agent:latest'
+
+  # Step 3: Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gke-deploy'
+    args:
+      - run
+      - --filename=.
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/mpprs-ai-agent:latest'
+      - '--location=${_REGION}'
+      - '--output=out'
+
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'apply'
+      - '-f'
+      - 'out/'
+    env:
+      - 'CLOUDSDK_COMPUTE_REGION=${_REGION}'
+
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/mpprs-ai-agent:latest'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/mpprs-ai-agent:${SHORT_SHA}'
+
+substitutions:
+  _REGION: 'us-central1'
+
+options:
+  machineType: 'N1_HIGHCPU_8'
